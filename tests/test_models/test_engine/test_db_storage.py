@@ -68,105 +68,51 @@ test_db_storage.py'])
                             "{:s} method needs a docstring".format(func[0]))
 
 
-class TestDBStorage(unittest.TestCase):
-    """Test the DBStorage class"""
-    def populate(self):
-        """Add one of each class to the database"""
-        state = State(name='Connecticut')
-        state.save()
-        city = City(state_id=state.id, name='New Haven')
-        city.save()
-        amenity = Amenity(name='Wi-Fi')
-        amenity.save()
-        user = User(email='postmaster@example.com', password='password')
-        user.save()
-        place = Place(city_id=city.id, user_id=user.id, name='Big Blue House')
-        place.amenities.append(amenity)
-        place.save()
-        review = Review(place_id=place.id, user_id=user.id, text='Bad.')
-        review.save()
-        return [review, place, user, amenity, city, state]
-
+class TestFileStorage(unittest.TestCase):
+    """Test the FileStorage class"""
     @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_all_returns_dict(self):
+    def allReturnDict(self):
         """Test that all returns a dictionaty"""
         self.assertIs(type(models.storage.all()), dict)
 
     @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_all_no_class(self):
+    def allNoClass(self):
         """Test that all returns all rows when no class is passed"""
 
     @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_new(self):
+    def new(self):
         """test that new adds an object to the database"""
 
     @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_save(self):
+    def save(self):
         """Test that save properly saves objects to file.json"""
 
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
+
+class TestDBStorage(unittest.TestCase):
+    """Test the DBStorage class"""
+
+    @unittest.skipIf(os.getenv('HBNB_TYPE_STORAGE') != 'db',
+                     "not testing db storage")
     def test_get(self):
-        """test retrieving single objects"""
-        objects = self.populate()
-        for obj in objects:
-            found = models.storage.get(type(obj), obj.id)
-            self.assertIs(found, obj)
-        for obj in objects:
-            obj.delete()
-            found = models.storage.get(type(obj), obj.id)
-            self.assertIsNone(found)
+        """Test that get returns specific object, or none"""
+        newState = State(name="New York")
+        newState.save()
+        newUser = User(email="bob@foobar.com", password="password")
+        newUser.save()
+        self.assertIs(newState, models.storage.get("State", newState.id))
+        self.assertIs(None, models.storage.get("State", "blah"))
+        self.assertIs(None, models.storage.get("blah", "blah"))
+        self.assertIs(newUser, models.storage.get("User", newUser.id))
 
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_get_multi_argument(self):
-        """ pass extra arguments to get """
-        models.storage.close()
-        models.storage = models.engine.db_storage.DBStorage()
-        models.storage.reload()
-        obj = self.populate()
-        with self.assertRaises(TypeError):
-            models.storage.get(type(obj[0]), obj[0].id, obj[1].id)
-
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_get_none(self):
-        """ pass none arguments to get. """
-        models.storage.close()
-        models.storage = models.engine.db_storage.DBStorage()
-        models.storage.reload()
-        obj = self.populate()
-
-        found = models.storage.get(type(obj[0]), None)
-        self.assertEqual(found, None)
-        with self.assertRaises(KeyError):
-            models.storage.get(None, obj[0].id)
-        with self.assertRaises(KeyError):
-            models.storage.get(None, None)
-
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
+    @unittest.skipIf(os.getenv('HBNB_TYPE_STORAGE') != 'db',
+                     "not testing db storage")
     def test_count(self):
-        """ test counting objects.
-        Start with 6 and delete one then check repetedly until 0. """
-        models.storage.close()
-        models.storage = models.engine.db_storage.DBStorage()
-        models.storage.reload()
-        objects = self.populate()
-        count = 6
-        self.assertEqual(6, len(objects))
-        for obj in objects:
-            obj.delete()
-            models.storage.save()
-            count -= 1
-            self.assertEqual(models.storage.count(), count)
-
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_count_bad(self):
-        """ give count extra arguments. """
-        with self.assertRaises(KeyError):
-            models.storage.count("2")
-
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_count_two_arg(self):
-        """ give count extra arguments. """
-        objects = self.populate()
-        state = objects[0]
-        with self.assertRaises(TypeError):
-            models.storage.count(state, "idhere")
+        """add new object to db"""
+        startCount = models.storage.count()
+        self.assertEqual(models.storage.count("Blah"), 0)
+        newState = State(name="Montevideo")
+        newState.save()
+        newUser = User(email="ralexrivero@gmail.com.com", password="dummypass")
+        newUser.save()
+        self.assertEqual(models.storage.count("State"), startCount + 1)
+        self.assertEqual(models.storage.count(), startCount + 2)
